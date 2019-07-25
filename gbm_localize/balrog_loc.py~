@@ -1,0 +1,145 @@
+import matplotlib
+matplotlib.use('Agg')
+
+from mpi4py import MPI
+mpi=MPI.COMM_WORLD
+rank = mpi.Get_rank()
+
+from astropy.coordinates import SkyCoord
+import matplotlib.pyplot as plt
+import numpy as np
+from trigdat_reader import TrigReader
+from threeML import *
+import gbmgeometry as gbmgeo
+from glob import glob
+import os
+
+
+
+def get_path():
+    return os.path.dirname(os.path.realpath(sys.argv[0]))
+
+def det_number_to_name(num):
+    if num<10:
+        return 'n'+str(num)
+    elif num==10:
+        return 'na'
+    elif num==11:
+        return 'nb'
+    elif num==12:
+        return 'b0'
+    elif num==13:
+        return 'b1'
+
+def det_occultation(intersec):
+    occulted=[]
+    for i in range (0,14):
+        # check if there is intersection between soruce ray and detector i
+        if not intersec[det_number_to_name(i)][0]['point']:
+            occulted.append(False)
+        else:
+            occulted.append(True)
+    return occulted
+
+# spectrum selection:
+# band = Band function
+# bpl = broken power law
+# cpl = power law with exponential cut-off
+# pl = power law
+
+
+
+
+def fit_trigdat(trigger, res_name, spectrum, det_list, src_int, bkg_int):
+
+    output_name = name+'_'+spectrum
+
+    data_file = glob('glg_trigdat_all_bn'+trigger+'_v0*.fit')[0]       
+
+    pos_int=gbmgeo.PositionInterpolator(T0=0,trigdat=data_file)
+    quat=pos_int.quaternion(0)  # computed at t=0 (trigger time)
+    dets=gbmgeo.GBM(quat)
+
+    trig_reader = TrigReader(data_file,fine=True,verbose=False)
+    trig_reader.set_active_time_interval('-0.064-0.064')                                                                                  
+    trig_reader.set_background_selections('-100--10','40-150')
+
+    trigdata  = trig_reader.to_plugin(*det_list)
+    data_list = DataList(*trigdata)
+
+    #starting position, not important
+    ra, dec = 0.,0.
+
+    
+    if spectrum == 'band':
+
+        band = Band()
+        band.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=250)
+        band.xp.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
+        band.alpha.set_uninformative_prior(Uniform_prior)
+        band.beta.set_uninformative_prior(Uniform_prior)
+
+	model = Model(PointSource('grb',ra,dec,spectral_shape=band))
+        
+    elif spectrum == 'bpl':
+	
+	bpl = Broken_powerlaw()
+	bpl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=250)
+	bpl.xb.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e5)
+	bpl.alpha.set_uninformative_prior(Uniform_prior)
+	bpl.beta.set_uninformative_prior(Uniform_prior)
+        
+	model = Model(PointSource('grb',ra,dec,spectral_shape=bpl))
+
+    elif spectrum == 'cpl':
+
+	cpl=Cutoff_powerlaw()
+	cpl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+	cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
+	cpl.index.set_uninformative_prior(Uniform_prior)
+        
+        model = Model(PointSource('grb',ra,dec,spectral_shape=cpl))
+
+
+    elif spectrum == 'pl':
+
+	pl=Powerlaw()
+	pl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+	pl.index.set_uninformative_prior(Uniform_prior)
+        
+        model = Model(PointSource('grb',ra,dec,spectral_shape=pl))
+
+    else:
+	print 'ERROR: invalid spectral model'
+
+        
+    bayes = BayesianAnalysis(model, data_list)
+
+    # MULTINEST
+    wrap = [0]*len(model.free_parameters)   #not working properly
+    wrap[0] = 1
+
+    _ =bayes.sample_multinest(800,
+                              chain_name=main_path+trigger+'/chains/test',
+                              importance_nested_sampling=False,
+                              const_efficiency_mode=False,
+                              wrapped_params=wrap,
+                              verbose=True,
+                              resume=False)
+
+
+    #save MULTINEST results
+    if (rank==0):
+        bayes.results.write_to(output_name+'.fits',overwrite=True)
+        
+    results = bayes.results
+
+
+    # energy spectrum
+    spectrum_plot = display_spectrum_model_counts(bayes);
+    spectrum_plot.savefig('spectrum_'+suffix+'.pdf')
+
+    # corner plot
+    cc_plot = res.corner_plot_cc()
+    cc_plot.savefig('cc_plot'+suffix+'.pdf')
+
