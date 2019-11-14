@@ -1,0 +1,6 @@
+*.pyc
+#*
+*~
+build/*
+gbm_localize/test/*
+gbm_localize/data/*

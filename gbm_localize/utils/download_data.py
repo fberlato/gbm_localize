@@ -8,9 +8,11 @@ from itertools import product
 all_det = ['n0','n1','n2','n3','n4','n5','n6','n7','n8','n9','na','nb','b0','b1']
 
 
-def download_data(trigger, data_type='trigdat', data_dir=None):
+def download_trigger_data(trigger, data_type='trigdat', data_dir=None):
     '''
     Downloads the trigger data from the FTP server.
+    :parameter trigger: trigger number.
+    :parameter data_type: trigdat, tte (default is trigdat).
     '''
     
     #to be sure that even non-string input still works
@@ -125,8 +127,11 @@ def download_data(trigger, data_type='trigdat', data_dir=None):
     os.chdir('..')
 
 
-def get_json(trigger):
-
+def download_json(trigger):
+    '''
+    Downloads the json file for the trigger from the website.
+    :parameter trigger: trigger of the GRB.
+    '''
     trigger = str(trigger)
     url = 'https://grb.mpe.mpg.de/grb/GRB'+trigger+'/json/'
     

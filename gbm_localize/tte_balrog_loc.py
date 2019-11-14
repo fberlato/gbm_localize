@@ -16,13 +16,11 @@ from collections import OrderedDict
 import warnings
 import os
 import sys
-
-
 import gbm_drm_gen as drm
-#from astropy.time import Time
 
 def get_path():
     return os.path.dirname(os.path.realpath(sys.argv[0]))
+
 
 
 trigger='190613172'
@@ -40,13 +38,13 @@ det_list = ['n0','n1','n3','b0']
 
 #for bayesblocks only
 bayes_blocks = True
-brightest_det = 'n0'
-bblocks_start = -5.
+brightest_det = 'n7'
+bblocks_start = 40.
 bblocks_stop = 25.
 
-bkg_int = ['-100--10','20-35','70-140']
-src_int = ['7.7-14']
-rsp_time = 10.
+bkg_int = ['-100--10','80-200']
+src_int = ['49-54']
+rsp_time = 51.
 
 det_ts = OrderedDict()
 
@@ -115,8 +113,7 @@ cpl.K.prior = Log_uniform_prior(lower_bound=1e-3, upper_bound=500)
 cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)                                                                     
 cpl.index.set_uninformative_prior(Uniform_prior)  
 
-ra=10.
-dec=-10.
+ra, dec = 0, 0
 
 ps = PointSource('grb',ra, dec, spectral_shape=cpl)
 model = Model(ps)

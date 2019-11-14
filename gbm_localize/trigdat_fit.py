@@ -14,11 +14,8 @@ import gbmgeometry as gbmgeo
 from glob import glob
 import json
 import os
+import sys
 
-
-
-def get_path():
-    return os.path.dirname(os.path.realpath(sys.argv[0]))
 
 def det_number_to_name(num):
     if num<10:
@@ -32,24 +29,7 @@ def det_number_to_name(num):
     elif num==13:
         return 'b1'
 
-def det_occultation(intersec):
-    occulted=[]
-    for i in range (0,14):
-        # check if there is intersection between soruce ray and detector i
-        if not intersec[det_number_to_name(i)][0]['point']:
-            occulted.append(False)
-        else:
-            occulted.append(True)
-    return occulted
-
-# spectrum selection:
-# band = Band function
-# bpl = broken power law
-# cpl = power law with exponential cut-off
-# pl = power law
-
-
-
+    
 def read_json_file(json_file):
     '''
     Reads the localization json file and returns the parameters used for the fit.
@@ -82,13 +62,12 @@ def read_json_file(json_file):
     bkg_int = [bkg_neg_int, bkg_pos_int]
 
     return spectrum, det_list, src_int, bkg_int
-        
 
 
-def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spectrum=None, det_list=None, src_int=None, bkg_int=None):
 
+
+def fit_trigdat(trigger, trigdat_path=None, json_file=None, result_path='.', spectrum=None, det_list=None, src_int=None, bkg_int=None):
                                                                                                               
-
     #reads the json file, but if the user provides some parameters, those override the ones from the json file
     if json_file != None:
         parameters = read_json_file(json_file)
@@ -120,9 +99,9 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
     else:
         data_file = trigdat_path
         
-    pos_int=gbmgeo.PositionInterpolator(T0=0,trigdat=data_file)
-    quat=pos_int.quaternion(0)  # computed at t=0 (trigger time)
-    dets=gbmgeo.GBM(quat)
+    #pos_int=gbmgeo.PositionInterpolator(T0=0,trigdat=data_file)
+    #quat=pos_int.quaternion(0)  # computed at t=0 (trigger time)
+    #dets=gbmgeo.GBM(quat)
 
     trig_reader = TrigReader(data_file,fine=True,verbose=False)
     trig_reader.set_active_time_interval(*src_int)                                                                                  
@@ -132,7 +111,7 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
     data_list = DataList(*trigdata)
 
     #starting position, not important
-    ra, dec = 0.,0.
+    ra, dec = 0., 0.
 
     
     if spectrum == 'band_function':
@@ -144,15 +123,6 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
         band.beta.set_uninformative_prior(Uniform_prior)
 	model = Model(PointSource('grb',ra,dec,spectral_shape=band))
         
-    elif spectrum == 'broken_powerlaw':
-	
-	bpl = Broken_powerlaw()
-	bpl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=250)
-	bpl.xb.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e5)
-	bpl.alpha.set_uninformative_prior(Uniform_prior)
-	bpl.beta.set_uninformative_prior(Uniform_prior)
-	model = Model(PointSource('grb',ra,dec,spectral_shape=bpl))
-
     elif spectrum == 'cutoff_powerlaw':
 
 	cpl=Cutoff_powerlaw()
@@ -160,7 +130,6 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
 	cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
 	cpl.index.set_uninformative_prior(Uniform_prior)
         model = Model(PointSource('grb',ra,dec,spectral_shape=cpl))
-
 
     elif spectrum == 'powerlaw':
 
@@ -170,6 +139,7 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
         model = Model(PointSource('grb',ra,dec,spectral_shape=pl))
 
     else:
+
 	print 'ERROR: invalid spectral model'
 
         
@@ -179,7 +149,7 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
     wrap = [0]*len(model.free_parameters)   #not working properly
     wrap[0] = 1
 
-    _ =bayes.sample_multinest(800,
+    _ = bayes.sample_multinest(800,
                               chain_name='./chains/test',
                               importance_nested_sampling=False,
                               const_efficiency_mode=False,
@@ -206,4 +176,5 @@ def fit_trigdat(trigger, result_path='.', trigdat_path=None, json_file=None, spe
 
 
 if __name__ == '__main__':
-    fit_trigdat()
+    print sys.argv[1:]
+    fit_trigdat(*sys.argv[1:])
