@@ -1,1 +1,1 @@
-from gbm_localize.utils import download_data
+from gbm_localize.utils import download_data, generate_notebook

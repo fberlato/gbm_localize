@@ -1,8 +1,4 @@
-from distutils.core import setup, Extension
-#from setuptools import find_packages
-#import numpy as np
-
-
+from distutils.core import setup
 
 
 setup(
@@ -12,6 +8,7 @@ setup(
     description='Package for GBM trigger data localization',
     packages=['gbm_localize', 'gbm_localize.utils'],
     requires=['numpy', 'threeML', 'gbm_drm_gen', 'trigdat_reader'],
-    #packages=find_packages(exclude=['tests']),
+    #package_dir={'gbm_localize': 'gbm_localize'},
+    package_data={'gbm_localize': ['nb_templates/*.ipynb']}
     #include_package_data=True
 )

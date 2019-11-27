@@ -13,7 +13,10 @@ def download_trigger_data(trigger, data_type='trigdat', data_dir=None):
     Downloads the trigger data from the FTP server.
     :parameter trigger: trigger number.
     :parameter data_type: trigdat, tte (default is trigdat).
+    :parameter data_dir: directory where the data is downloaded.
     '''
+
+    original_dir = os.getcwd()
     
     #to be sure that even non-string input still works
     trigger = str(trigger)
@@ -124,14 +127,33 @@ def download_trigger_data(trigger, data_type='trigdat', data_dir=None):
                     print file_name+' downloaded!'
 
 
-    os.chdir('..')
+    os.chdir(original_dir)
 
+    
 
-def download_json(trigger):
+def download_json(trigger, data_dir=None):
     '''
     Downloads the json file for the trigger from the website.
     :parameter trigger: trigger of the GRB.
+    :parameter data_dir: directory where the data is downloaded.
     '''
+    
+    original_dir = os.getcwd()
+    
+    if data_dir == None:
+        if os.path.isdir(trigger) == True:
+            os.chdir(trigger)
+        else:
+            os.mkdir(trigger)
+            os.chdir(trigger)
+    else:
+        if os.path.isdir(data_dir) == True:
+            os.chdir(data_dir)
+        else:
+            os.mkdir(data_dir)
+            os.chdir(data_dir)
+ 
+    
     trigger = str(trigger)
     url = 'https://grb.mpe.mpg.de/grb/GRB'+trigger+'/json/'
     
@@ -140,4 +162,6 @@ def download_json(trigger):
 
     with open('json_'+trigger+'.json', 'w') as outfile:
         json.dump(json_data, outfile)
-    
+
+
+    os.chdir(original_dir)
