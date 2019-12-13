@@ -126,14 +126,11 @@ def fit_trigdat(trigger, trigdat_path=None, json_file=None, conf_file=None, resu
     trig_reader.set_background_selections(*bkg_int)
 
     with PdfPages('lightcurves.pdf') as pdf:
-        figs = trig_reader.view_lightcurve(start=-100, stop=150, return_plots=True);
+        figs = trig_reader.view_lightcurve(start=-50, stop=100, return_plots=True);
 
-        try:
-            for fig in figs:
-                pdf.savefig(fig[1])
-        except ValueError:
-            return figs
-
+        for fig in figs:
+            pdf.savefig(fig[1])
+        
         
     trigdata  = trig_reader.to_plugin(*det_list)
 
