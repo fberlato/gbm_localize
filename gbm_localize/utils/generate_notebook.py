@@ -49,6 +49,7 @@ def generate_nb_trigdat(trigger, trigdat_file, json_file=None, src_int=['0-5'], 
     Generates a notebook with the trigdat data lightcurves.
     :parameter trigger: trigger number.
     :parameter trigdat_file: path of the trigdat_file.
+    :parameter json_file: import the selections from a MPE website event json file.
     :parameter src_int: source time interval, e.g. ['0-5'].
     :parameter bkg_int: background time interval, e.g. ['-100--10','50-150'].
     :parameter det_list: list of the detectors to be used, e.g. ['n0','n1','b0'].
@@ -62,7 +63,8 @@ def generate_nb_trigdat(trigger, trigdat_file, json_file=None, src_int=['0-5'], 
     pm.execute_notebook(
         template_dir+'/trigdat_nb_template.ipynb',
         'trigdat_nb_'+trigger+'.ipynb',
-        parameters = parameter_dict
+        parameters = parameter_dict,
+        kernel_name='python3'
     )
 
 

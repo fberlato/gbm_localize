@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from mpi4py import MPI
-mpi=MPI.COMM_WORLD
+mpi = MPI.COMM_WORLD
 rank = mpi.Get_rank()
 
 from astropy.coordinates import SkyCoord
@@ -30,23 +30,28 @@ def read_mpe_json_file(json_file):
     :parameter json_file: json file with the fit parameters.
     '''
     
-    with open(json_file, 'r') as data_file:                                                                                                                                                            
-        json_data = data_file.read()                                                                                                                                                                   
-        json_dict = json.loads(json_data)[0]                                                                                                                                                           
+    with open(json_file, 'r') as data_file:
         
-    #looks for the most recent version of the trigdat json data                                                                                                                                     
+        json_data = data_file.read()
+        json_dict = json.loads(json_data)[0]
+        
+        
+    #looks for the most recent version of the trigdat json data
+    
     versions = []
     
     for i in range(len(json_dict['grb_params'])):
         ver = json_dict['grb_params'][i]['version']
         
-        if ver == 'tte':                                                                                                                                                                               
-            versions.append(-1)                                                                                                                                                                        
-            continue                                                                                                                                                                                   
-        else:                                                                                                                                                                                          
+        if ver == 'tte':
+            versions.append(-1)
+            continue
+        
+        else:
             versions.append(int(ver))
-                    
-    vind = np.argmin(versions)                                                                                                                                                                         
+
+            
+    vind = np.argmin(versions)
 
     spectrum = json_dict['grb_params'][vind]['model_type']
     det_list = json_dict['grb_params'][vind]['used_detectors'].split(',')
@@ -71,7 +76,7 @@ def read_conf_file(conf_file):
 
 
 
-def fit_trigdat(trigger, trigdat_path=None, json_file=None, conf_file=None, result_path='', spectrum=None, det_list=None, src_int=None, bkg_int=None):
+def fit_trigdat(trigger, trigdat_file=None, json_file=None, conf_file=None, result_path='', spectrum=None, det_list=None, src_int=None, bkg_int=None):
                                                                                                               
     #reads the json file, but if the user provides some parameters, those override the ones from the json file
     if json_file != None:
@@ -111,11 +116,15 @@ def fit_trigdat(trigger, trigdat_path=None, json_file=None, conf_file=None, resu
                                                                               
     output_name = '_'+spectrum
     
-    if trigdat_path == None:
+    if trigdat_file == None:
         data_file = glob('glg_trigdat_all_bn'+trigger+'_v0*.fit')[0]
         
     else:
-        data_file = trigdat_path
+        data_file = trigdat_file
+
+
+    if result_path == '':
+        result_path = os.getcwd()
         
     #pos_int=gbmgeo.PositionInterpolator(T0=0,trigdat=data_file)
     #quat=pos_int.quaternion(0)  # computed at t=0 (trigger time)
@@ -153,23 +162,23 @@ def fit_trigdat(trigger, trigdat_path=None, json_file=None, conf_file=None, resu
         band.xp.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
         band.alpha.set_uninformative_prior(Uniform_prior)
         band.beta.set_uninformative_prior(Uniform_prior)
-	model = Model(PointSource('grb',ra,dec,spectral_shape=band))
+        model = Model(PointSource('grb',ra,dec,spectral_shape=band))
         
     elif spectrum == 'cutoff_powerlaw':
-	cpl=Cutoff_powerlaw()
-	cpl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
-	cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
-	cpl.index.set_uninformative_prior(Uniform_prior)
+        cpl=Cutoff_powerlaw()
+        cpl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+        cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
+        cpl.index.set_uninformative_prior(Uniform_prior)
         model = Model(PointSource('grb',ra,dec,spectral_shape=cpl))
 
     elif spectrum == 'powerlaw':
-	pl=Powerlaw()
-	pl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
-	pl.index.set_uninformative_prior(Uniform_prior)
+        pl=Powerlaw()
+        pl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+        pl.index.set_uninformative_prior(Uniform_prior)
         model = Model(PointSource('grb',ra,dec,spectral_shape=pl))
         
     else:
-	print 'ERROR: invalid spectral model'
+        print('ERROR: invalid spectral model')
 
         
     bayes = BayesianAnalysis(model, data_list)
@@ -193,8 +202,7 @@ def fit_trigdat(trigger, trigdat_path=None, json_file=None, conf_file=None, resu
         
         results = bayes.results
 
-
-        # energy spectrum
+        # spectrum and residuals
         spectrum_plot = display_spectrum_model_counts(bayes);
         spectrum_plot.savefig(result_path+'/grb_'+trigger+'_spectrum_'+spectrum+'.pdf')
 
@@ -205,5 +213,5 @@ def fit_trigdat(trigger, trigdat_path=None, json_file=None, conf_file=None, resu
 
 
 if __name__ == '__main__':
-    print sys.argv[1:]
+    print(sys.argv[1:])
     fit_trigdat(*sys.argv[1:])

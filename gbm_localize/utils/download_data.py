@@ -1,5 +1,5 @@
 import requests
-import urllib2
+import urllib.request as ulib
 import os
 import json
 from itertools import product
@@ -57,7 +57,7 @@ def download_trigger_data(trigger, data_type='trigdat', data_dir=None):
 
         assert request.status_code == 200, 'ERROR: trigdat data not found!'
 
-        downloaded_file = urllib2.urlopen(file_url)
+        downloaded_file = ulib.urlopen(file_url)
 
         if os.path.isfile(file_name) == True:
             pass
@@ -65,7 +65,7 @@ def download_trigger_data(trigger, data_type='trigdat', data_dir=None):
             with open(file_name, "wb") as local_file:
                 local_file.write(downloaded_file.read())
 
-            print file_name+' downloaded!'
+            print(file_name+' downloaded!')
 
             
     #tte data
@@ -81,50 +81,73 @@ def download_trigger_data(trigger, data_type='trigdat', data_dir=None):
         assert request.status_code == 200, 'ERROR: tte data not found!'
 
         for det in all_det:
-            file_name = 'glg_tte_'+det+'_bn'+trigger+'_v0'+str(i)+'.fit'
-            file_url = url + file_name
-            downloaded_file = urllib2.urlopen(file_url)
+            file_name = 'glg_tte_'+det+'_bn'+trigger+'_v0'+str(i)+'.fit'        
 
             if os.path.isfile(file_name) == True:
+                print('File %s already present, skipping.' % file_name)
                 continue
+            
             else:
+                file_url = url + file_name
+                downloaded_file = ulib.urlopen(file_url)
+
                 with open(file_name, "wb") as local_file:
                     local_file.write(downloaded_file.read())
 
-                print file_name+' downloaded!'
+                print(file_name+' downloaded!')
 
-                
-    #everything else
-    datas = ['cspec','ctime']
-    exts = ['pha','rsp','rsp2']
-    names = product(datas, exts)
 
-    for name in names:
+    if 'all' in data_type:
+        #everything else
+        datas = ['cspec','ctime']
+        exts = ['pha','rsp','rsp2']
+        names = product(datas, exts)
 
-        if name[0] in data_type or 'all' in data_type:
+        for name in names:
+
+            if name[0] in data_type or 'all' in data_type:
             
-            for i in range (0,10):
-                file_name = 'glg_'+name[0]+'_n0_bn'+trigger+'_v0'+str(i)+'.'+name[1]
-                file_url = url + file_name
-                request = requests.get(file_url)
-        
-                if request.status_code == 200:
-                    break
+                for i in range (0,10):
+                    file_name = 'glg_'+name[0]+'_n0_bn'+trigger+'_v0'+str(i)+'.'+name[1]
+                    file_url = url + file_name
+                    request = requests.get(file_url)
 
-            assert request.status_code == 200, 'ERROR: '+name[0]+' data with extension '+name[1]+' not found!'
-
-            for det in all_det:
-                file_name = 'glg_'+name[0]+'_'+det+'_bn'+trigger+'_v0'+str(i)+'.'+name[1]
-                file_url = url + file_name
-                downloaded_file = urllib2.urlopen(file_url)
-
-                if os.path.isfile(file_name) == True:
-                    continue
-                else:
-                    with open(file_name, "wb") as local_file:
-                        local_file.write(downloaded_file.read())
+                    print(url)
+                    print(file_name)
+                
+                    if request.status_code == 200:
+                        if name[1] == 'rsp':
                         
-                    print file_name+' downloaded!'
+                            file_name = 'glg_'+name[0]+'_n0_bn'+trigger+'_v0'+str(i)+'.rsp2'
+                            file_url = url + file_name
+                            request = requests.get(file_url)
+
+                            if request.status_code == 200:
+                                continue
+                        
+                            else:
+                                break
+                            
+                        else:
+                            break
+
+                        assert request.status_code == 200, 'ERROR: '+name[0]+' data with extension '+name[1]+' not found!'
+            
+                        for det in all_det:
+                            file_name = 'glg_'+name[0]+'_'+det+'_bn'+trigger+'_v0'+str(i)+'.'+name[1]
+                
+                            if os.path.isfile(file_name) == True:
+                                print('File %s already present, skipping.' % file_name)
+                                continue
+                
+                            else:
+                                file_url = url + file_name
+                                downloaded_file = ulib.urlopen(file_url)
+
+                            with open(file_name, "wb") as local_file:
+                                local_file.write(downloaded_file.read())
+                        
+                            print(file_name+' downloaded!')
 
 
     os.chdir(original_dir)
@@ -157,7 +180,7 @@ def download_json(trigger, data_dir=None):
     trigger = str(trigger)
     url = 'https://grb.mpe.mpg.de/grb/GRB'+trigger+'/json/'
     
-    resp = urllib2.urlopen(url)
+    resp = ulib.urlopen(url)
     json_data = json.loads(resp.read())
 
     with open('json_'+trigger+'.json', 'w') as outfile:

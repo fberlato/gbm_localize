@@ -27,7 +27,7 @@ def get_path():
 
 trigger='190829830'
 
-spectrum = 'band'
+spectrum = 'band_function'
 suffix='_tte_'+str(spectrum)
 
 
@@ -48,6 +48,10 @@ bblocks_stop = 25.
 bkg_int = ['-100--10','80-200']
 src_int = ['49-54']
 rsp_time = 51.
+free_pos = False
+
+ra, dec = 0, 0
+
 
 det_ts = OrderedDict()
 
@@ -80,13 +84,13 @@ for det in det_list:
     det_rsp[det] = rsp
 
     
-for i in range(len(det_ts[brightest_det])):
+for i in range(len(det_ts[brightest_det].bins)):
     
-    if det_ts[brightest_det].significance[i] >= 5:
+    if det_ts[brightest_det].significance_per_interval[i] >= 5:
 
         for det in det_list:
-            src_int = [str(det_ts[brightest_det].bins.start[i])+'-'+str(det_ts[brightest_det].bins.stop[i])]
-            rsp_time = (det_ts[brightest_det].bins.start[i] + det_ts[brightest_det].bins.stop[i])/2
+            src_int = [str(det_ts[brightest_det].bins.starts[i])+'-'+str(det_ts[brightest_det].bins.stops[i])]
+            rsp_time = (det_ts[brightest_det].bins.starts[i] + det_ts[brightest_det].bins.stops[i])/2
             det_ts[det].set_active_time_interval(*src_int)
 
             
@@ -106,38 +110,35 @@ for i in range(len(det_ts[brightest_det])):
         det_bl = OrderedDict()
 
         for det in det_list:
-            det_bl[det] = drm.BALROGLike.from_spectrumlike(det_sl[det], rsp_time, det_rsp[det], free_position=True)
+            det_bl[det] = drm.BALROGLike.from_spectrumlike(det_sl[det], rsp_time, det_rsp[det], free_position=free_pos)
 
 
         data_tte = DataList(*det_bl.values())
 
 
-        if spectrum == 'band':
+        if spectrum == 'band_function':
+            band = Band()
+            band.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+            band.xp.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
+            band.alpha.set_uninformative_prior(Uniform_prior)
+            band.beta.set_uninformative_prior(Uniform_prior)
+            model = Model(PointSource('grb',ra,dec,spectral_shape=band))
+        
+        elif spectrum == 'cutoff_powerlaw':
+            cpl=Cutoff_powerlaw()
+            cpl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+            cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)
+            cpl.index.set_uninformative_prior(Uniform_prior)
+            model = Model(PointSource('grb',ra,dec,spectral_shape=cpl))
 
-            band = Band()                                                                                                                             
-            band.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)                                                                       
-            band.xp.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)                                                                        
-            band.alpha.set_uninformative_prior(Uniform_prior)                                                                                         
-            band.beta.set_uninformative_prior(Uniform_prior)   
-
-            ra, dec = 0, 0
-            ps = PointSource('grb',ra, dec, spectral_shape=cpl)
-            model = Model(ps)
-            
-        elif spectrum == 'cpl':
-            
-            cpl = Cutoff_powerlaw()                                                                                                                 
-            cpl.K.prior = Log_uniform_prior(lower_bound=1e-3, upper_bound=500)                                                                   
-            cpl.xc.prior = Log_uniform_prior(lower_bound=10, upper_bound=1e4)                                                                     
-            cpl.index.set_uninformative_prior(Uniform_prior)  
-
-            ra, dec = 0, 0
-            ps = PointSource('grb',ra, dec, spectral_shape=cpl)
-            model = Model(ps)
-            
+        elif spectrum == 'powerlaw':
+            pl=Powerlaw()
+            pl.K.prior = Log_uniform_prior(lower_bound=1e-5, upper_bound=500)
+            pl.index.set_uninformative_prior(Uniform_prior)
+            model = Model(PointSource('grb',ra,dec,spectral_shape=pl))
+        
         else:
-
-            print 'ERROR: invalid spectral model!'
+            print('ERROR: invalid spectral model')
 
             
         bayes = BayesianAnalysis(model, data_tte)
@@ -170,5 +171,3 @@ for i in range(len(det_ts[brightest_det])):
             spectrum_plot = display_spectrum_model_counts(bayes, step=False);
             spectrum_plot.savefig('spectrum_plot'+suffix+'_'+str(i)+'.pdf')
 
-        del det_sl
-        del det_bl
